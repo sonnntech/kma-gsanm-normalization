@@ -39,7 +39,7 @@ python3 -m pytest -q tests          # kiểm thử
 Tùy chọn **ClickHouse**:
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d && python3 deploy/load_clickhouse.py
+docker compose up -d && python3 deploy/load_clickhouse.py
 # hoặc không cần Docker:
 pip install chdb && python3 deploy/load_clickhouse.py --chdb
 ```
@@ -47,7 +47,7 @@ pip install chdb && python3 deploy/load_clickhouse.py --chdb
 ## Cấu trúc
 
 ```
-gsanm-normalization/
+kma-gsanm-normalization/
 ├── samples/             # log mẫu 5 nguồn (có cài kịch bản tấn công, dòng lỗi, dòng trùng)
 ├── parsers/             # tầng parse: regex/grok, JSON lồng nhau, key=value
 ├── schema/
@@ -57,7 +57,8 @@ gsanm-normalization/
 ├── eval/
 │   ├── metrics.py       # đánh giá chất lượng chuẩn hóa
 │   └── correlate.py     # trước/sau + luật tương quan
-├── deploy/              # ClickHouse: DDL, luật tương quan SQL, docker-compose, loader
+├── deploy/              # ClickHouse: DDL, luật tương quan SQL, loader
+├── docker-compose.yml   # ClickHouse (tùy chọn)
 ├── docs/so-sanh-schema.md  # ECS vs OCSF vs CIM vs CEF/LEEF
 ├── tests/               # pytest
 └── demo.sh
