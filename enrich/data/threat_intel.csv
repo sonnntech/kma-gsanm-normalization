@@ -1,0 +1,3 @@
+indicator,type,source,confidence,description
+185.220.101.45,ipv4,tor-exit-list,high,Tor exit node seen in brute-force campaigns
+45.33.32.156,ipv4,internal-watchlist,low,Public scanner (scanme.nmap.org)

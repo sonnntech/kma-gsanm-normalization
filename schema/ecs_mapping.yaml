@@ -1,0 +1,161 @@
+# Tầng 2 – Ánh xạ trường (field mapping) sang Elastic Common Schema (ECS 8.x)
+#
+# Mỗi nguồn khai báo:
+#   file       : file log trong samples/
+#   parser     : tên parser trong parsers/__init__.py
+#   timestamp  : cách đọc thời gian (định dạng + múi giờ gốc) -> chuẩn hóa về UTC ISO-8601
+#   fields     : đổi tên trường gốc -> trường ECS, kèm kiểu dữ liệu đích
+#   static     : giá trị cố định (observer, event.dataset…)
+#   classify   : luật phân loại sự kiện -> event.category / type / outcome (taxonomy ECS)
+#
+# Kiểu dữ liệu hỗ trợ: str, int, ip, lower, upper, severity_suricata
+# Định dạng thời gian: strptime(%...) | iso8601 | msdate (/Date(ms)/)
+
+sources:
+
+  linux_auth:
+    file: linux_auth.log
+    parser: syslog_auth
+    timestamp: {from: ts, format: "%b %d %H:%M:%S", tz: "+07:00", assume_year: 2026}
+    static:
+      event.module: system
+      event.dataset: system.auth
+      observer.vendor: Linux
+      observer.product: OpenSSH
+      process.name: sshd
+    fields:
+      hostname: {to: host.name, type: lower}
+      pid:      {to: process.pid, type: int}
+      user:     {to: user.name, type: lower}
+      src_ip:   {to: source.ip, type: ip}
+      src_port: {to: source.port, type: int}
+      message:  {to: message}
+    classify:
+      - when: {sshd_action: failed_password}
+        set: {event.category: [authentication], event.type: [start], event.action: ssh_login, event.outcome: failure}
+      - when: {sshd_action: invalid_user}
+        set: {event.category: [authentication], event.type: [start], event.action: ssh_login, event.outcome: failure}
+      - when: {sshd_action: accepted}
+        set: {event.category: [authentication], event.type: [start], event.action: ssh_login, event.outcome: success}
+      - when: {sshd_action: session_closed}
+        set: {event.category: [session], event.type: [end], event.action: ssh_session_closed}
+
+  apache:
+    file: apache_access.log
+    parser: apache_combined
+    timestamp: {from: ts, format: "%d/%b/%Y:%H:%M:%S %z"}
+    static:
+      event.module: apache
+      event.dataset: apache.access
+      event.category: [web]
+      event.type: [access]
+      observer.vendor: Apache
+      observer.product: httpd
+      host.name: web01
+    fields:
+      clientip: {to: source.ip, type: ip}
+      method:   {to: http.request.method, type: upper}
+      url:      {to: url.original}
+      status:   {to: http.response.status_code, type: int}
+      bytes:    {to: http.response.body.bytes, type: int}
+      agent:    {to: user_agent.original}
+    classify:
+      - when: {status: {regex: "^[23]"}}
+        set: {event.outcome: success}
+      - when: {status: {regex: "^[45]"}}
+        set: {event.outcome: failure}
+
+  suricata:
+    file: suricata_eve.json
+    parser: json
+    timestamp: {from: timestamp, format: iso8601}
+    static:
+      event.module: suricata
+      event.dataset: suricata.eve
+      event.kind: alert
+      event.outcome: unknown        # IDS chỉ quan sát, không biết kết quả -> giá trị ECS hợp lệ 'unknown'
+      event.category: [network, intrusion_detection]
+      event.type: [info]
+      observer.vendor: OISF
+      observer.product: Suricata
+    fields:
+      host:                {to: observer.name}
+      src_ip:              {to: source.ip, type: ip}
+      src_port:            {to: source.port, type: int}
+      dest_ip:             {to: destination.ip, type: ip}
+      dest_port:           {to: destination.port, type: int}
+      proto:               {to: network.transport, type: lower}
+      alert.signature:     {to: rule.name}
+      alert.signature_id:  {to: rule.id, type: str}
+      alert.category:      {to: rule.category}
+      alert.severity:      {to: event.severity, type: severity_suricata}
+      alert.action:        {to: event.action}
+
+  fortigate:
+    file: fortigate.log
+    parser: kv
+    timestamp: {from: [date, time], format: "%Y-%m-%d %H:%M:%S", tz_field: tz}
+    static:
+      event.module: fortinet
+      event.dataset: fortinet.firewall
+      event.category: [network]
+      observer.vendor: Fortinet
+      observer.product: FortiGate
+      observer.type: firewall
+    fields:
+      devname:  {to: observer.name}
+      srcip:    {to: source.ip, type: ip}
+      srcport:  {to: source.port, type: int}
+      dstip:    {to: destination.ip, type: ip}
+      dstport:  {to: destination.port, type: int}
+      srcintf:  {to: observer.ingress.interface.name}
+      dstintf:  {to: observer.egress.interface.name}
+      service:  {to: network.protocol, type: lower}
+      action:   {to: event.action}
+      policyid: {to: rule.id, type: str}
+      sentbyte: {to: source.bytes, type: int}
+      rcvdbyte: {to: destination.bytes, type: int}
+    classify:
+      - when: {proto: "6"}
+        set: {network.transport: tcp}
+      - when: {proto: "17"}
+        set: {network.transport: udp}
+      - when: {action: accept}
+        set: {event.type: [connection, allowed], event.outcome: success}
+      - when: {action: deny}
+        set: {event.type: [connection, denied], event.outcome: failure}
+
+  windows:
+    file: windows_security.json
+    parser: json
+    timestamp: {from: TimeCreated, format: msdate}
+    static:
+      event.module: windows
+      event.dataset: windows.security
+      event.provider: Microsoft-Windows-Security-Auditing
+      observer.vendor: Microsoft
+      observer.product: Windows
+    fields:
+      MachineName:                 {to: host.name, type: lower}
+      EventID:                     {to: event.code, type: str}
+      EventData.TargetUserName:    {to: user.name, type: lower}
+      EventData.TargetDomainName:  {to: user.domain, type: lower}
+      EventData.IpAddress:         {to: source.ip, type: ip}
+      EventData.IpPort:            {to: source.port, type: int}
+      EventData.LogonType:         {to: winlog.logon.type, type: str}
+      EventData.Status:            {to: winlog.event_data.Status}
+    classify:
+      - when: {EventID: 4624}
+        set: {event.category: [authentication], event.type: [start], event.action: logged-in, event.outcome: success}
+      - when: {EventID: 4625}
+        set: {event.category: [authentication], event.type: [start], event.action: logon-failed, event.outcome: failure}
+
+# Trường lõi dùng để đo "field coverage" (độ phủ trường) sau chuẩn hóa
+core_fields:
+  - "@timestamp"
+  - event.dataset
+  - event.category
+  - event.outcome
+  - source.ip
+  - host.name|observer.name
+  - user.name|destination.ip|url.original

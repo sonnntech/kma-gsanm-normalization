@@ -1,0 +1,11 @@
+cidr,country_iso_code,country_name,asn,as_org
+185.220.101.0/24,DE,Germany,AS60729,Stiftung Erneuerbare Freiheit (Tor exit)
+14.160.0.0/11,VN,Vietnam,AS45899,VNPT Corp
+113.160.0.0/11,VN,Vietnam,AS45899,VNPT Corp
+42.112.0.0/13,VN,Vietnam,AS18403,FPT Telecom
+203.113.128.0/18,VN,Vietnam,AS7552,Viettel Group
+8.8.8.0/24,US,United States,AS15169,Google LLC
+1.1.1.0/24,AU,Australia,AS13335,Cloudflare Inc
+52.94.0.0/15,US,United States,AS16509,Amazon.com Inc
+104.16.0.0/13,US,United States,AS13335,Cloudflare Inc
+45.33.0.0/17,US,United States,AS63949,Akamai (Linode)

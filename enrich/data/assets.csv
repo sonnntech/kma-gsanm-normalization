@@ -1,0 +1,4 @@
+ip,hostname,role,criticality,owner
+10.10.1.1,fgt-hq,firewall,high,netops
+10.10.1.10,dc01.corp.local,domain_controller,critical,sysadmin
+10.10.1.20,web01,web_server,high,webteam

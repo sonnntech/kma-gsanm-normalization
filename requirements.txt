@@ -1,0 +1,4 @@
+PyYAML>=6.0
+matplotlib>=3.7      # tùy chọn: vẽ biểu đồ metrics.png
+pytest>=7            # tùy chọn: chạy kiểm thử
+# chdb>=2.0          # tùy chọn: ClickHouse nhúng, dùng với deploy/load_clickhouse.py --chdb

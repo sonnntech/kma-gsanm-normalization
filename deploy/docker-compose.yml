@@ -1,0 +1,19 @@
+# Tùy chọn: đẩy dữ liệu đã chuẩn hóa vào ClickHouse để truy vấn/tương quan quy mô lớn.
+#   docker compose -f deploy/docker-compose.yml up -d
+#   python deploy/load_clickhouse.py
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: gsanm-clickhouse
+    ports: ["8123:8123", "9000:9000"]
+    environment:
+      CLICKHOUSE_USER: gsanm
+      CLICKHOUSE_PASSWORD: gsanm
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - ./clickhouse_ddl.sql:/docker-entrypoint-initdb.d/01_ddl.sql:ro
+      - ch-data:/var/lib/clickhouse
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+volumes:
+  ch-data:
